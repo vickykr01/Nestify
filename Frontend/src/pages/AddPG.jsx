@@ -1,12 +1,17 @@
 import { useState } from "react";
 import API from "../api/api";
 import { useNavigate } from "react-router-dom";
+import MapPicker from "../components/MapPicker";
 
 function AddPG() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     title: "",
     location: "",
+    coordinates: {
+      lat: null,
+      lng: null,
+    },
     price: "",
     facilities: "",
     gender: "boys",
@@ -14,6 +19,8 @@ function AddPG() {
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasValidCoordinates =
+    Number.isFinite(form.coordinates.lat) && Number.isFinite(form.coordinates.lng);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,6 +32,10 @@ function AddPG() {
       const formData = new FormData();
       formData.append("title", form.title);
       formData.append("location", form.location);
+      if (hasValidCoordinates) {
+        formData.append("lat", String(form.coordinates.lat));
+        formData.append("lng", String(form.coordinates.lng));
+      }
       formData.append("price", form.price);
       formData.append("facilities", form.facilities);
       formData.append("gender", form.gender);
@@ -74,6 +85,7 @@ function AddPG() {
             type="text"
             placeholder="Location"
             className="input-surface"
+            value={form.location}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
             required
           />
@@ -106,6 +118,18 @@ function AddPG() {
             type="file"
             className="input-surface"
             onChange={(e) => setForm({ ...form, image: e.target.files?.[0] || null })}
+          />
+
+          <MapPicker
+            location={form.location}
+            coordinates={form.coordinates}
+            onChange={(updates) =>
+              setForm((current) => ({
+                ...current,
+                ...updates,
+                coordinates: updates.coordinates || current.coordinates,
+              }))
+            }
           />
 
           <button

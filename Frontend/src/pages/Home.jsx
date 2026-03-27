@@ -1,21 +1,74 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api/api";
+import RatingStars from "../components/RatingStars";
+
+const WHATSAPP_NUMBER = "6201373137";
+const WHATSAPP_LINK = `https://wa.me/91${WHATSAPP_NUMBER}`;
 
 function Home() {
   const [pgs, setPgs] = useState([]);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: "",
+  });
+  const [contactError, setContactError] = useState("");
+  const [contactSuccess, setContactSuccess] = useState("");
+  const [contactWarnings, setContactWarnings] = useState([]);
+  const [isContactSubmitting, setIsContactSubmitting] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const featuredPgs = pgs.slice(0, 6);
 
-  const formatPrice = (price) =>
-    `Rs. ${Number(price || 0).toLocaleString("en-IN")}`;
+  const formatPrice = (price) => `Rs. ${Number(price || 0).toLocaleString("en-IN")}`;
+  const getAverageRating = (reviews = []) =>
+    reviews.length
+      ? (
+          reviews.reduce((total, review) => total + Number(review.rating || 0), 0) /
+          reviews.length
+        ).toFixed(1)
+      : null;
 
   useEffect(() => {
     API.get("/api/pgs")
       .then((res) => setPgs(res.data))
       .catch((err) => console.log(err));
   }, []);
+
+  const scrollToContact = () => {
+    const section = document.getElementById("contact");
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleContactSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setIsContactSubmitting(true);
+      setContactError("");
+      setContactSuccess("");
+      setContactWarnings([]);
+
+      const res = await API.post("/api/contact", contactForm);
+      setContactSuccess("Your contact request was submitted.");
+      setContactWarnings(res.data.warnings || []);
+      setContactForm({
+        name: "",
+        email: "",
+        phone: "",
+        message: "",
+      });
+    } catch (err) {
+      setContactError(
+        err.response?.data?.error || "Could not send your contact request right now.",
+      );
+      setContactWarnings(err.response?.data?.warnings || []);
+    } finally {
+      setIsContactSubmitting(false);
+    }
+  };
 
   return (
     <div className="app-shell page-enter px-4 pb-12 pt-4 sm:px-6 lg:px-8">
@@ -29,33 +82,42 @@ function Home() {
           </h1>
         </div>
 
-        {!token ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
-            onClick={() => navigate("/login")}
-            className="btn-primary w-full px-5 py-3 text-sm font-semibold sm:w-auto"
+            onClick={scrollToContact}
+            className="btn-secondary px-5 py-3 text-sm font-semibold"
           >
-            Admin Login
+            Contact
           </button>
-        ) : (
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={() => navigate("/admin")}
-              className="btn-primary px-5 py-3 text-sm font-semibold"
-            >
-              Dashboard
-            </button>
 
+          {!token ? (
             <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                navigate("/");
-              }}
-              className="btn-secondary px-5 py-3 text-sm font-semibold"
+              onClick={() => navigate("/login")}
+              className="btn-primary w-full px-5 py-3 text-sm font-semibold sm:w-auto"
             >
-              Logout
+              Admin Login
             </button>
-          </div>
-        )}
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/admin")}
+                className="btn-primary px-5 py-3 text-sm font-semibold"
+              >
+                Dashboard
+              </button>
+
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  navigate("/");
+                }}
+                className="btn-secondary px-5 py-3 text-sm font-semibold"
+              >
+                Logout
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <section className="soft-grid mx-auto mt-6 grid max-w-7xl gap-6 overflow-hidden rounded-[2rem] border border-[rgba(122,90,59,0.12)] px-5 py-8 sm:px-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:px-10 lg:py-12">
@@ -65,12 +127,11 @@ function Home() {
             Modern stays, simplified
           </div>
           <h2 className="mt-5 text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-            Student and working-professional PG discovery with a warmer, cleaner
-            vibe.
+            Student and working-professional PG discovery with a warmer, cleaner vibe.
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
-            Browse comfortable spaces, compare locations quickly, and move from
-            search to booking without the clutter.
+            Browse comfortable spaces, compare locations quickly, and move from search to
+            booking without the clutter.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
@@ -83,32 +144,24 @@ function Home() {
               Explore PGs
             </button>
             <button
-              onClick={() => navigate("/login")}
+              onClick={scrollToContact}
               className="btn-secondary px-6 py-3.5 text-sm font-semibold sm:text-base"
             >
-              Admin Access
+              Contact Us
             </button>
           </div>
           <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="glass-panel rounded-2xl px-4 py-4">
-              <p className="text-3xl font-black text-slate-900">
-                {pgs.length}+
-              </p>
-              <p className="mt-1 text-sm text-slate-600">
-                Curated listings ready to explore
-              </p>
+              <p className="text-3xl font-black text-slate-900">{pgs.length}+</p>
+              <p className="mt-1 text-sm text-slate-600">Curated listings ready to explore</p>
             </div>
             <div className="glass-panel rounded-2xl px-4 py-4">
               <p className="text-3xl font-black text-slate-900">24/7</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Easy browsing from any device
-              </p>
+              <p className="mt-1 text-sm text-slate-600">Easy browsing from any device</p>
             </div>
             <div className="glass-panel rounded-2xl px-4 py-4">
               <p className="text-3xl font-black text-slate-900">1 Tap</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Fast booking requests for each property
-              </p>
+              <p className="mt-1 text-sm text-slate-600">Fast booking requests for each property</p>
             </div>
           </div>
         </div>
@@ -159,19 +212,16 @@ function Home() {
             </h3>
           </div>
           <p className="max-w-md text-sm leading-6 text-slate-600 sm:text-right">
-            Cards now stack cleanly on mobile, expand on desktop, and use softer
-            motion for a more modern first impression.
+            Cards now stack cleanly on mobile, expand on desktop, and use softer motion for a
+            more modern first impression.
           </p>
         </div>
 
         {featuredPgs.length === 0 ? (
           <div className="glass-panel rounded-[2rem] px-6 py-12 text-center">
-            <h4 className="text-2xl font-bold text-slate-900">
-              No PGs available yet
-            </h4>
+            <h4 className="text-2xl font-bold text-slate-900">No PGs available yet</h4>
             <p className="mt-3 text-slate-600">
-              Add your first property from the admin dashboard to start
-              showcasing listings here.
+              Add your first property from the admin dashboard to start showcasing listings here.
             </p>
           </div>
         ) : (
@@ -183,10 +233,7 @@ function Home() {
               >
                 <div className="relative">
                   <img
-                    src={
-                      pg.images?.[0] ||
-                      "https://placehold.co/800x500?text=Nestify+PG"
-                    }
+                    src={pg.images?.[0] || "https://placehold.co/800x500?text=Nestify+PG"}
                     alt={pg.title}
                     className="h-56 w-full object-cover transition duration-500 group-hover:scale-105 sm:h-64"
                   />
@@ -194,17 +241,39 @@ function Home() {
                   <div className="absolute left-4 top-4 rounded-full bg-white/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-700">
                     {pg.gender || "PG"}
                   </div>
+                  {pg.verifiedByAdmin ? (
+                    <div className="absolute right-4 top-4 rounded-full bg-emerald-100/95 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-800">
+                      Verified by Admin
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="p-5 sm:p-6">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                      {getAverageRating(pg.reviews) ? (
+                        <div className="flex items-center gap-2">
+                          <RatingStars
+                            rating={Number(getAverageRating(pg.reviews))}
+                            size="text-sm"
+                          />
+                          <span>{getAverageRating(pg.reviews)}</span>
+                        </div>
+                      ) : (
+                        "No ratings yet"
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-slate-500">
+                      {pg.reviews?.length || 0} comments
+                    </span>
+                  </div>
+
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h4 className="text-2xl font-bold tracking-tight text-slate-900">
                         {pg.title}
                       </h4>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {pg.location}
-                      </p>
+                      <p className="mt-1 text-sm text-slate-500">{pg.location}</p>
                     </div>
                     <div className="rounded-2xl bg-orange-50 px-3 py-2 text-right">
                       <p className="text-xs uppercase tracking-[0.22em] text-orange-800/70">
@@ -238,6 +307,110 @@ function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="mx-auto mt-10 max-w-7xl" id="contact">
+        <div className="glass-panel-strong rounded-[2rem] p-6 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-orange-800/70">
+                Contact
+              </p>
+              <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                Reach Nestify in real time
+              </h3>
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                Send your message here and Nestify can notify the team on WhatsApp and Gmail when
+                the backend credentials are configured.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <a
+                  href={WHATSAPP_LINK}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary inline-flex w-full items-center justify-center px-5 py-3 text-sm font-semibold"
+                >
+                  WhatsApp 6201373137
+                </a>
+                <button
+                  onClick={() =>
+                    window.open(
+                      "https://mail.google.com/mail/?view=cm&fs=1&tf=1",
+                      "_blank",
+                      "noopener,noreferrer",
+                    )
+                  }
+                  className="btn-secondary w-full px-5 py-3 text-sm font-semibold"
+                >
+                  Open Gmail
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              {contactError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {contactError}
+                </div>
+              ) : null}
+
+              {contactSuccess ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {contactSuccess}
+                </div>
+              ) : null}
+
+              {contactWarnings.length ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {contactWarnings.join(" ")}
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="Your Name"
+                  className="input-surface"
+                  value={contactForm.name}
+                  onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder="Your Email"
+                  className="input-surface"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <input
+                type="text"
+                placeholder="Phone Number"
+                className="input-surface"
+                value={contactForm.phone}
+                onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+              />
+
+              <textarea
+                placeholder="How can we help?"
+                className="input-surface min-h-32 resize-none"
+                value={contactForm.message}
+                onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                required
+              />
+
+              <button
+                disabled={isContactSubmitting}
+                className="btn-primary w-full px-6 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:text-base"
+              >
+                {isContactSubmitting ? "Sending..." : "Send Contact Request"}
+              </button>
+            </form>
+          </div>
+        </div>
       </section>
     </div>
   );

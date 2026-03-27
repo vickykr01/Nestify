@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../api/api";
+import MapPicker from "../components/MapPicker";
 
 function EditPG() {
   const { id } = useParams();
@@ -8,6 +9,10 @@ function EditPG() {
   const [form, setForm] = useState({
     title: "",
     location: "",
+    coordinates: {
+      lat: null,
+      lng: null,
+    },
     price: "",
     facilities: "",
     gender: "boys",
@@ -15,6 +20,8 @@ function EditPG() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasValidCoordinates =
+    Number.isFinite(form.coordinates.lat) && Number.isFinite(form.coordinates.lng);
 
   useEffect(() => {
     const loadPg = async () => {
@@ -28,6 +35,10 @@ function EditPG() {
         setForm({
           title: pg.title || "",
           location: pg.location || "",
+          coordinates: {
+            lat: pg.coordinates?.lat ?? null,
+            lng: pg.coordinates?.lng ?? null,
+          },
           price: pg.price || "",
           facilities: pg.facilities?.join(", ") || "",
           gender: pg.gender || "boys",
@@ -48,7 +59,11 @@ function EditPG() {
     try {
       setIsSubmitting(true);
       setError("");
-      await API.put(`/api/pgs/${id}`, form);
+      await API.put(`/api/pgs/${id}`, {
+        ...form,
+        lat: hasValidCoordinates ? form.coordinates.lat : null,
+        lng: hasValidCoordinates ? form.coordinates.lng : null,
+      });
       navigate("/admin");
     } catch (err) {
       setError(err.response?.data?.error || "Could not update PG. Please try again.");
@@ -124,6 +139,18 @@ function EditPG() {
             <option value="girls">Girls</option>
             <option value="both">Both</option>
           </select>
+
+          <MapPicker
+            location={form.location}
+            coordinates={form.coordinates}
+            onChange={(updates) =>
+              setForm((current) => ({
+                ...current,
+                ...updates,
+                coordinates: updates.coordinates || current.coordinates,
+              }))
+            }
+          />
 
           <button
             disabled={isSubmitting}

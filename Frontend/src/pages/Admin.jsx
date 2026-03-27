@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import API from "../api/api";
 import { useNavigate } from "react-router-dom";
+import API from "../api/api";
+import RatingStars from "../components/RatingStars";
 
 function Admin() {
   const [bookings, setBookings] = useState([]);
@@ -42,14 +43,42 @@ function Admin() {
       await API.put(`/api/bookings/${id}`, { status });
 
       setBookings((current) =>
-        current.map((booking) =>
-          booking._id === id ? { ...booking, status } : booking,
-        ),
+        current.map((booking) => (booking._id === id ? { ...booking, status } : booking)),
       );
     } catch (err) {
       setError(err.response?.data?.error || "Could not update booking status.");
     }
   };
+
+  const toggleVerification = async (id, verifiedByAdmin) => {
+    try {
+      setError("");
+      const res = await API.put(`/api/pgs/${id}/verify`, { verifiedByAdmin });
+
+      setPgs((current) => current.map((pg) => (pg._id === id ? res.data : pg)));
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not update verification status.");
+    }
+  };
+
+  const deleteReview = async (pgId, reviewId) => {
+    try {
+      setError("");
+      const res = await API.delete(`/api/pgs/${pgId}/reviews/${reviewId}`);
+
+      setPgs((current) => current.map((pg) => (pg._id === pgId ? res.data : pg)));
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not delete review.");
+    }
+  };
+
+  const getAverageRating = (reviews = []) =>
+    reviews.length
+      ? (
+          reviews.reduce((total, review) => total + Number(review.rating || 0), 0) /
+          reviews.length
+        ).toFixed(1)
+      : null;
 
   const deletePG = async (id) => {
     try {
@@ -70,7 +99,7 @@ function Admin() {
               Admin Dashboard
             </p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-              Manage bookings and listings from one responsive workspace.
+              Manage bookings, listings, and review moderation from one responsive workspace.
             </h1>
           </div>
           <button
@@ -201,17 +230,48 @@ function Admin() {
             ) : null}
 
             {pgs.map((pg) => (
-              <div
-                key={pg._id}
-                className="rounded-[1.6rem] bg-white/75 p-4 shadow-sm sm:p-5"
-              >
+              <div key={pg._id} className="rounded-[1.6rem] bg-white/75 p-4 shadow-sm sm:p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">{pg.title}</h3>
                     <p className="mt-1 text-sm text-slate-500">{pg.location}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                        {getAverageRating(pg.reviews) ? (
+                          <span className="flex items-center gap-2">
+                            <RatingStars
+                              rating={Number(getAverageRating(pg.reviews))}
+                              size="text-sm"
+                            />
+                            <span>{getAverageRating(pg.reviews)}</span>
+                          </span>
+                        ) : (
+                          "No ratings yet"
+                        )}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
+                        {pg.reviews?.length || 0} comments
+                      </span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${
+                          pg.verifiedByAdmin
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-orange-100 text-orange-800"
+                        }`}
+                      >
+                        {pg.verifiedByAdmin ? "Verified by Admin" : "Not Verified"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row">
+                    <button
+                      onClick={() => toggleVerification(pg._id, !pg.verifiedByAdmin)}
+                      className="btn-secondary px-4 py-2.5 text-sm font-semibold"
+                    >
+                      {pg.verifiedByAdmin ? "Remove Verification" : "Verify by Admin"}
+                    </button>
+
                     <button
                       onClick={() => navigate(`/admin/edit-pg/${pg._id}`)}
                       className="btn-secondary px-4 py-2.5 text-sm font-semibold"
@@ -226,6 +286,57 @@ function Admin() {
                       Delete
                     </button>
                   </div>
+                </div>
+
+                <div className="mt-4 rounded-[1.25rem] bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
+                      Comments
+                    </h4>
+                    <span className="text-xs text-slate-500">
+                      Google-style stars shown from Nestify reviews
+                    </span>
+                  </div>
+
+                  {pg.reviews?.length ? (
+                    <div className="space-y-3">
+                      {pg.reviews.map((review) => (
+                        <div
+                          key={review._id}
+                          className="rounded-[1rem] bg-white px-4 py-4 shadow-sm"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h5 className="font-semibold text-slate-900">{review.name}</h5>
+                                <RatingStars rating={review.rating} size="text-sm" />
+                                <span className="text-xs font-medium text-slate-500">
+                                  {review.rating}.0
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {new Date(review.createdAt).toLocaleDateString("en-IN")}
+                              </p>
+                              <p className="mt-3 text-sm leading-6 text-slate-600">
+                                {review.comment}
+                              </p>
+                            </div>
+
+                            <button
+                              onClick={() => deleteReview(pg._id, review._id)}
+                              className="btn-primary px-4 py-2 text-xs font-semibold"
+                            >
+                              Delete Comment
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[1rem] bg-white px-4 py-5 text-sm text-slate-600">
+                      No comments to manage yet.
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
