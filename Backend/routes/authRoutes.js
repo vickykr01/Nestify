@@ -4,35 +4,59 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// REGISTER (one-time)
 router.post("/register", async (req, res) => {
-  const hashed = await bcrypt.hash(req.body.password, 10);
+  try {
+    const { email, password } = req.body;
 
-  const user = new User({
-    email: req.body.email,
-    password: hashed,
-  });
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email and password are required" });
+    }
 
-  await user.save();
-  res.json({ message: "User created" });
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+      return res.status(400).json({ msg: "User already exists" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = new User({
+      email,
+      password: hashed,
+    });
+
+    await user.save();
+    res.json({ message: "User created" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// LOGIN
 router.post("/login", async (req, res) => {
-  const user = await User.findOne({ email: req.body.email });
+  try {
+    const { email, password } = req.body;
 
-  if (!user) return res.status(400).json({ msg: "User not found" });
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email and password are required" });
+    }
 
-  const isMatch = await bcrypt.compare(req.body.password, user.password);
+    const user = await User.findOne({ email });
 
-  if (!isMatch) return res.status(400).json({ msg: "Wrong password" });
+    if (!user) return res.status(400).json({ msg: "User not found" });
 
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-  );
+    const isMatch = await bcrypt.compare(password, user.password);
 
-  res.json({ token });
+    if (!isMatch) return res.status(400).json({ msg: "Wrong password" });
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+    );
+
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

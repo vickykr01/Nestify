@@ -21,8 +21,22 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/admin/add-pg" element={<AddPG />} />
-        <Route path="/admin/edit-pg/:id" element={<EditPG />} />
+        <Route
+          path="/admin/add-pg"
+          element={
+            <ProtectedRoute>
+              <AddPG />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/edit-pg/:id"
+          element={
+            <ProtectedRoute>
+              <EditPG />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>

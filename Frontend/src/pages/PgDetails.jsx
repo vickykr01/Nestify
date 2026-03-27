@@ -5,33 +5,78 @@ import API from "../api/api";
 function PgDetails() {
   const { id } = useParams();
   const [pg, setPg] = useState(null);
-
   const [form, setForm] = useState({
     name: "",
     phone: "",
     message: "",
   });
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    API.get(`/api/pgs/${id}`).then((res) => setPg(res.data));
+    const loadPg = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const res = await API.get(`/api/pgs/${id}`);
+        setPg(res.data);
+      } catch (err) {
+        setError(err.response?.data?.error || "Could not load this listing.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPg();
   }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await API.post("/api/bookings", {
-      ...form,
-      pg: id,
-    });
+    try {
+      setIsSubmitting(true);
+      setError("");
+      setSuccessMessage("");
 
-    alert("Request sent! We will contact you soon.");
+      await API.post("/api/bookings", {
+        ...form,
+        pg: id,
+      });
+
+      setForm({
+        name: "",
+        phone: "",
+        message: "",
+      });
+      setSuccessMessage("Request sent! We will contact you soon.");
+    } catch (err) {
+      setError(
+        err.response?.data?.error || "Could not send your request. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="glass-panel rounded-[2rem] px-8 py-10 text-center">
+          <h2 className="text-2xl font-bold text-slate-900">Loading listing...</h2>
+        </div>
+      </div>
+    );
+  }
 
   if (!pg) {
     return (
       <div className="app-shell flex min-h-screen items-center justify-center px-4">
         <div className="glass-panel rounded-[2rem] px-8 py-10 text-center">
-          <h2 className="text-2xl font-bold text-slate-900">Loading listing...</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Listing unavailable</h2>
+          <p className="mt-3 text-sm text-slate-600">{error || "This PG could not be found."}</p>
         </div>
       </div>
     );
@@ -94,10 +139,23 @@ function PgDetails() {
                   </h2>
                 </div>
 
+                {error ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </div>
+                ) : null}
+
+                {successMessage ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {successMessage}
+                  </div>
+                ) : null}
+
                 <input
                   type="text"
                   placeholder="Your Name"
                   className="input-surface"
+                  value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                 />
@@ -106,6 +164,7 @@ function PgDetails() {
                   type="text"
                   placeholder="Phone Number"
                   className="input-surface"
+                  value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   required
                 />
@@ -113,11 +172,15 @@ function PgDetails() {
                 <textarea
                   placeholder="Message"
                   className="input-surface min-h-28 resize-none"
+                  value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                 />
 
-                <button className="btn-primary w-full px-6 py-3.5 text-sm font-semibold sm:text-base">
-                  Request Booking
+                <button
+                  disabled={isSubmitting}
+                  className="btn-primary w-full px-6 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:text-base"
+                >
+                  {isSubmitting ? "Sending Request..." : "Request Booking"}
                 </button>
               </form>
             </div>

@@ -5,7 +5,6 @@ import API from "../api/api";
 function EditPG() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [form, setForm] = useState({
     title: "",
     location: "",
@@ -13,32 +12,60 @@ function EditPG() {
     facilities: "",
     gender: "boys",
   });
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    API.get(`/api/pgs/${id}`).then((res) => {
-      const pg = res.data;
+    const loadPg = async () => {
+      try {
+        setIsLoading(true);
+        setError("");
 
-      setForm({
-        title: pg.title,
-        location: pg.location,
-        price: pg.price,
-        facilities: pg.facilities?.join(","),
-        gender: pg.gender,
-      });
-    });
+        const res = await API.get(`/api/pgs/${id}`);
+        const pg = res.data;
+
+        setForm({
+          title: pg.title || "",
+          location: pg.location || "",
+          price: pg.price || "",
+          facilities: pg.facilities?.join(", ") || "",
+          gender: pg.gender || "boys",
+        });
+      } catch (err) {
+        setError(err.response?.data?.error || "Could not load PG details.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPg();
   }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    await API.put(`/api/pgs/${id}`, {
-      ...form,
-      facilities: form.facilities.split(","),
-    });
-
-    alert("PG Updated!");
-    navigate("/admin");
+    try {
+      setIsSubmitting(true);
+      setError("");
+      await API.put(`/api/pgs/${id}`, form);
+      navigate("/admin");
+    } catch (err) {
+      setError(err.response?.data?.error || "Could not update PG. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="app-shell flex min-h-screen items-center justify-center px-4">
+        <div className="glass-panel rounded-[2rem] px-8 py-10 text-center">
+          <h2 className="text-2xl font-bold text-slate-900">Loading PG details...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell px-4 py-8 sm:px-6">
@@ -53,17 +80,25 @@ function EditPG() {
           Fine-tune your listing with a cleaner, more comfortable editing flow.
         </p>
 
+        {error ? (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+
         <form onSubmit={handleSubmit} className="mt-8 grid gap-4 sm:grid-cols-2">
           <input
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className="input-surface sm:col-span-2"
+            required
           />
 
           <input
             value={form.location}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
             className="input-surface"
+            required
           />
 
           <input
@@ -71,6 +106,7 @@ function EditPG() {
             value={form.price}
             onChange={(e) => setForm({ ...form, price: e.target.value })}
             className="input-surface"
+            required
           />
 
           <input
@@ -79,8 +115,21 @@ function EditPG() {
             className="input-surface sm:col-span-2"
           />
 
-          <button className="btn-primary sm:col-span-2 px-4 py-3.5 text-sm font-semibold">
-            Update PG
+          <select
+            value={form.gender}
+            onChange={(e) => setForm({ ...form, gender: e.target.value })}
+            className="input-surface sm:col-span-2"
+          >
+            <option value="boys">Boys</option>
+            <option value="girls">Girls</option>
+            <option value="both">Both</option>
+          </select>
+
+          <button
+            disabled={isSubmitting}
+            className="btn-primary sm:col-span-2 px-4 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? "Updating PG..." : "Update PG"}
           </button>
         </form>
       </div>

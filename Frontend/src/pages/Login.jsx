@@ -4,21 +4,28 @@ import { useNavigate } from "react-router-dom";
 
 function Login() {
   const navigate = useNavigate();
-
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await API.post("/api/auth/login", form);
+    try {
+      setIsSubmitting(true);
+      setError("");
 
-    localStorage.setItem("token", res.data.token);
-
-    alert("Login successful!");
-    navigate("/admin");
+      const res = await API.post("/api/auth/login", form);
+      localStorage.setItem("token", res.data.token);
+      navigate("/admin");
+    } catch (err) {
+      setError(err.response?.data?.msg || "Login failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -64,6 +71,12 @@ function Login() {
               Sign in to manage properties, respond to requests, and keep listings fresh.
             </p>
 
+            {error ? (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
+
             <form onSubmit={handleSubmit} className="mt-8 space-y-4">
               <input
                 type="email"
@@ -81,8 +94,11 @@ function Login() {
                 required
               />
 
-              <button className="btn-primary w-full px-4 py-3.5 text-sm font-semibold sm:text-base">
-                Login
+              <button
+                disabled={isSubmitting}
+                className="btn-primary w-full px-4 py-3.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70 sm:text-base"
+              >
+                {isSubmitting ? "Signing in..." : "Login"}
               </button>
             </form>
 

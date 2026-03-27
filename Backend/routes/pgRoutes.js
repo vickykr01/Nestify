@@ -3,21 +3,50 @@ const router = express.Router();
 const PG = require("../models/PG");
 const upload = require("../middleware/upload");
 
-// ✅ GET all PGs
+const normalizeFacilities = (facilities = []) => {
+  if (Array.isArray(facilities)) {
+    return facilities.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof facilities === "string") {
+    return facilities
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 router.get("/", async (req, res) => {
-  const pgs = await PG.find();
-  res.json(pgs);
+  try {
+    const pgs = await PG.find();
+    res.json(pgs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// CREATE PG with image
+router.get("/:id", async (req, res) => {
+  try {
+    const pg = await PG.findById(req.params.id);
+
+    if (!pg) {
+      return res.status(404).json({ error: "PG not found" });
+    }
+
+    res.json(pg);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/", upload.single("image"), async (req, res) => {
   try {
-    const imageUrl = req.file.path;
-
     const newPG = new PG({
       ...req.body,
-      images: [imageUrl],
-      facilities: req.body.facilities.split(","),
+      images: req.file?.path ? [req.file.path] : [],
+      facilities: normalizeFacilities(req.body.facilities),
     });
 
     await newPG.save();
@@ -27,22 +56,40 @@ router.post("/", upload.single("image"), async (req, res) => {
   }
 });
 
-// UPDATE PG
 router.put("/:id", upload.single("image"), async (req, res) => {
   try {
-    const updated = await PG.findByIdAndUpdate(req.params.id, req.body, {
+    const update = {
+      ...req.body,
+      facilities: normalizeFacilities(req.body.facilities),
+    };
+
+    if (req.file?.path) {
+      update.images = [req.file.path];
+    }
+
+    const updated = await PG.findByIdAndUpdate(req.params.id, update, {
       new: true,
+      runValidators: true,
     });
+
+    if (!updated) {
+      return res.status(404).json({ error: "PG not found" });
+    }
+
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE PG
 router.delete("/:id", async (req, res) => {
   try {
-    await PG.findByIdAndDelete(req.params.id);
+    const deleted = await PG.findByIdAndDelete(req.params.id);
+
+    if (!deleted) {
+      return res.status(404).json({ error: "PG not found" });
+    }
+
     res.json({ message: "PG Deleted" });
   } catch (err) {
     res.status(500).json({ error: err.message });
