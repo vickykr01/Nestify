@@ -8,6 +8,8 @@ const WHATSAPP_LINK = `https://wa.me/91${WHATSAPP_NUMBER}`;
 
 function Home() {
   const [pgs, setPgs] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
@@ -20,7 +22,28 @@ function Home() {
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const featuredPgs = pgs.slice(0, 6);
+  const extractCityName = (location = "") => location.split(",")[0]?.trim() || location.trim();
+  const cityOptions = [...new Set(pgs.map((pg) => extractCityName(pg.location)).filter(Boolean))].slice(
+    0,
+    8,
+  );
+  const filteredPgs = pgs.filter((pg) => {
+    const query = searchQuery.trim().toLowerCase();
+    const cityName = extractCityName(pg.location).toLowerCase();
+    const cityMatches = !selectedCity || cityName === selectedCity.toLowerCase();
+
+    if (!cityMatches) {
+      return false;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    return [pg.title, pg.location, ...(pg.facilities || [])]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
 
   const formatPrice = (price) => `Rs. ${Number(price || 0).toLocaleString("en-IN")}`;
   const getAverageRating = (reviews = []) =>
@@ -40,6 +63,16 @@ function Home() {
   const scrollToContact = () => {
     const section = document.getElementById("contact");
     section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const scrollToListings = () => {
+    const section = document.getElementById("featured-pgs");
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    scrollToListings();
   };
 
   const handleContactSubmit = async (e) => {
@@ -82,7 +115,23 @@ function Home() {
           </h1>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row lg:items-center">
+          <form onSubmit={handleSearchSubmit} className="relative w-full lg:min-w-[320px]">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search PG or city name"
+              className="input-surface w-full pr-10 text-sm"
+            />
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-3 py-1 text-xs font-semibold text-slate-500 transition hover:bg-orange-50 hover:text-orange-900"
+            >
+              Search
+            </button>
+          </form>
+
           <button
             onClick={scrollToContact}
             className="btn-secondary px-5 py-3 text-sm font-semibold"
@@ -136,8 +185,7 @@ function Home() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
               onClick={() => {
-                const section = document.getElementById("featured-pgs");
-                section?.scrollIntoView({ behavior: "smooth", block: "start" });
+                scrollToListings();
               }}
               className="btn-primary pulse-glow px-6 py-3.5 text-sm font-semibold sm:text-base"
             >
@@ -217,16 +265,56 @@ function Home() {
           </p>
         </div>
 
-        {featuredPgs.length === 0 ? (
+        <div className="mb-6 flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCity("");
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                searchQuery || selectedCity
+                  ? "bg-white/70 text-slate-700"
+                  : "bg-orange-100 text-orange-900"
+              }`}
+            >
+              All Cities
+            </button>
+            {cityOptions.map((city) => (
+              <button
+                key={city}
+                onClick={() => {
+                  setSelectedCity(city);
+                  scrollToListings();
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  selectedCity.toLowerCase() === city.toLowerCase()
+                    ? "bg-orange-100 text-orange-900"
+                    : "bg-white/70 text-slate-700"
+                }`}
+              >
+                {city}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-sm text-slate-600">
+            {filteredPgs.length} result{filteredPgs.length === 1 ? "" : "s"}
+            {searchQuery ? ` for "${searchQuery}"` : ""}
+            {selectedCity ? `${searchQuery ? " in" : " for"} ${selectedCity}` : ""}
+          </p>
+        </div>
+
+        {filteredPgs.length === 0 ? (
           <div className="glass-panel rounded-[2rem] px-6 py-12 text-center">
-            <h4 className="text-2xl font-bold text-slate-900">No PGs available yet</h4>
+            <h4 className="text-2xl font-bold text-slate-900">No PGs found</h4>
             <p className="mt-3 text-slate-600">
-              Add your first property from the admin dashboard to start showcasing listings here.
+              Try another PG name or city filter to see more listings.
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {featuredPgs.map((pg) => (
+            {filteredPgs.map((pg) => (
               <article
                 key={pg._id}
                 className="stagger-rise glass-panel group overflow-hidden rounded-[2rem]"
