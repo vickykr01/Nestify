@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../api/api";
 import RatingStars from "../components/RatingStars";
 
-const WHATSAPP_NUMBER = "6201373137";
+const WHATSAPP_NUMBER = "9473049803";
 const WHATSAPP_LINK = `https://wa.me/91${WHATSAPP_NUMBER}`;
 
 function Home() {
